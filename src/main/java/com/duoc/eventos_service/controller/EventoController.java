@@ -20,37 +20,52 @@ public class EventoController {
     @Autowired
     private CompraRepository compraRepository;
 
+    // Endpoint 1: Listar eventos
     @GetMapping("/eventos")
     public List<Evento> listarEventos() {
         return eventoRepository.findAll();
     }
 
+    // Endpoint 2: Agregar evento (CON MODO DEBUG)
     @PostMapping("/eventos")
-    public Evento agregarEvento(@RequestBody Evento evento) {
-        return eventoRepository.save(evento);
+    public ResponseEntity<?> agregarEvento(@RequestBody Evento evento) {
+        try {
+            Evento guardado = eventoRepository.save(evento);
+            return ResponseEntity.ok(guardado);
+        } catch (Exception e) {
+            // Esto imprimirá el error real en los logs de AWS
+            e.printStackTrace(); 
+            // Esto nos devolverá el error real en Postman
+            return ResponseEntity.status(500).body("Error: " + e.getMessage() + " | Causa: " + e.getCause());
+        }
     }
 
+    // Endpoint 3: Comprar entradas
     @PostMapping("/compras")
     public ResponseEntity<?> comprarEntradas(@RequestBody CompraRequest request) {
-        Evento evento = eventoRepository.findById(request.getEventoId())
-                .orElseThrow(() -> new RuntimeException("Evento no encontrado"));
+        try {
+            Evento evento = eventoRepository.findById(request.getEventoId())
+                    .orElseThrow(() -> new RuntimeException("Evento no encontrado"));
 
-        double total = evento.getPrecio() * request.getCantidad();
+            double total = evento.getPrecio() * request.getCantidad();
 
-        Compra compra = new Compra();
-        compra.setEvento(evento);
-        compra.setCantidad(request.getCantidad());
-        compra.setPrecioUnitario(evento.getPrecio());
-        compra.setPrecioTotal(total);
+            Compra compra = new Compra();
+            compra.setEvento(evento);
+            compra.setCantidad(request.getCantidad());
+            compra.setPrecioUnitario(evento.getPrecio());
+            compra.setPrecioTotal(total);
 
-        compraRepository.save(compra);
-
-        return ResponseEntity.ok(compra);
+            compraRepository.save(compra);
+            return ResponseEntity.ok(compra);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(500).body("Error: " + e.getMessage());
+        }
     }
 }
 
-// ¡Mira aquí! Ahora es "static class"
-static class CompraRequest {
+// Clase interna (Ahora es public static)
+public static class CompraRequest {
     private Long eventoId;
     private Integer cantidad;
 
