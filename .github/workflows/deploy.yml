@@ -26,14 +26,13 @@ jobs:
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/eventos-service:latest
 
       - name: Deploy to EC2
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.USER_SERVER }}
-          key: ${{ secrets.EC2_SSH_KEY }}
-          script: |
+        run: |
+          echo "${{ secrets.EC2_SSH_KEY }}" > private_key.pem
+          chmod 600 private_key.pem
+          ssh -o StrictHostKeyChecking=no -i private_key.pem ${{ secrets.USER_SERVER }}@${{ secrets.EC2_HOST }} << 'EOF'
             echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
             docker pull ${{ secrets.DOCKERHUB_USERNAME }}/eventos-service:latest
             docker stop eventos-service || true
             docker rm eventos-service || true
             docker run -d --name eventos-service -p 8080:8080 ${{ secrets.DOCKERHUB_USERNAME }}/eventos-service:latest
+          EOF
