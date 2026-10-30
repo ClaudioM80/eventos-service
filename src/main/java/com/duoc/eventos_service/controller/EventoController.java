@@ -20,27 +20,21 @@ public class EventoController {
     @Autowired
     private CompraRepository compraRepository;
 
-    // Endpoint 1: Listar eventos
     @GetMapping("/eventos")
     public List<Evento> listarEventos() {
         return eventoRepository.findAll();
     }
 
-    // Endpoint 2: Agregar evento (CON MODO DEBUG)
     @PostMapping("/eventos")
     public ResponseEntity<?> agregarEvento(@RequestBody Evento evento) {
         try {
             Evento guardado = eventoRepository.save(evento);
             return ResponseEntity.ok(guardado);
         } catch (Exception e) {
-            // Esto imprimirá el error real en los logs de AWS
-            e.printStackTrace(); 
-            // Esto nos devolverá el error real en Postman
-            return ResponseEntity.status(500).body("Error: " + e.getMessage() + " | Causa: " + e.getCause());
+            return ResponseEntity.status(500).body("Error: " + e.getMessage());
         }
     }
 
-    // Endpoint 3: Comprar entradas
     @PostMapping("/compras")
     public ResponseEntity<?> comprarEntradas(@RequestBody CompraRequest request) {
         try {
@@ -58,19 +52,18 @@ public class EventoController {
             compraRepository.save(compra);
             return ResponseEntity.ok(compra);
         } catch (Exception e) {
-            e.printStackTrace();
             return ResponseEntity.status(500).body("Error: " + e.getMessage());
         }
     }
-}
 
-// Clase interna (Ahora es public static)
-public static class CompraRequest {
-    private Long eventoId;
-    private Integer cantidad;
+    // ¡OJO AQUÍ! La clase va ADENTRO del controlador y SIN la palabra "public"
+    static class CompraRequest {
+        private Long eventoId;
+        private Integer cantidad;
 
-    public Long getEventoId() { return eventoId; }
-    public void setEventoId(Long eventoId) { this.eventoId = eventoId; }
-    public Integer getCantidad() { return cantidad; }
-    public void setCantidad(Integer cantidad) { this.cantidad = cantidad; }
+        public Long getEventoId() { return eventoId; }
+        public void setEventoId(Long eventoId) { this.eventoId = eventoId; }
+        public Integer getCantidad() { return cantidad; }
+        public void setCantidad(Integer cantidad) { this.cantidad = cantidad; }
+    }
 }
