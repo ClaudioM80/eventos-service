@@ -5,6 +5,9 @@ import com.duoc.eventos_service.model.Evento;
 import com.duoc.eventos_service.repository.CompraRepository;
 import com.duoc.eventos_service.repository.EventoRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -65,5 +68,23 @@ public class EventoController {
         public void setEventoId(Long eventoId) { this.eventoId = eventoId; }
         public Integer getCantidad() { return cantidad; }
         public void setCantidad(Integer cantidad) { this.cantidad = cantidad; }
+    }
+
+
+        @GetMapping("/resumen/descargar/{idCompra}")
+    public ResponseEntity<ByteArrayResource> descargarResumen(@PathVariable Long idCompra) {
+        String contenido = "=== RESUMEN DE COMPRA ===\n" +
+                           "ID Compra: " + idCompra + "\n" +
+                           "Evento: Concierto Rock\n" +
+                           "Total: $50.000\n" +
+                           "¡Gracias por tu compra!";
+                           
+        byte[] data = contenido.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        ByteArrayResource resource = new ByteArrayResource(data);
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=resumen_" + idCompra + ".txt")
+                .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                .body(resource);
     }
 }
