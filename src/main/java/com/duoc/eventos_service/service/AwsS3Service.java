@@ -7,7 +7,6 @@ import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
-// IMPORTS CORREGIDOS AQUÍ:
 import com.duoc.eventos_service.dto.S3ObjectDto;
 import com.duoc.eventos_service.exception.InvalidFileException;
 import com.duoc.eventos_service.exception.S3AccessDeniedException;
@@ -25,6 +24,7 @@ import software.amazon.awssdk.services.s3.model.CopyObjectRequest;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectResponse;
+import software.amazon.awssdk.services.s3.model.HeadObjectRequest;
 import software.amazon.awssdk.services.s3.model.ListObjectsV2Request;
 import software.amazon.awssdk.services.s3.model.ListObjectsV2Response;
 import software.amazon.awssdk.services.s3.model.NoSuchBucketException;
@@ -39,25 +39,16 @@ public class AwsS3Service {
 
     private final S3Client s3Client;
 
-    /**
-     * Lista todos los objetos en un bucket de S3
-     */
     public List<S3ObjectDto> listObjects(String bucket) {
-
         try {
             log.info("Listando objetos del bucket: {}", bucket);
-
             ListObjectsV2Request request = ListObjectsV2Request.builder().bucket(bucket).build();
-
             ListObjectsV2Response response = s3Client.listObjectsV2(request);
-
             log.info("Se encontraron {} objetos en el bucket {}", response.contents().size(), bucket);
-
             return response.contents().stream()
                     .map(obj -> new S3ObjectDto(obj.key(), obj.size(),
                             obj.lastModified() != null ? obj.lastModified().toString() : null))
                     .collect(Collectors.toList());
-
         } catch (NoSuchBucketException e) {
             throw new S3BucketNotFoundException(bucket, e);
         } catch (S3Exception e) {
@@ -68,22 +59,13 @@ public class AwsS3Service {
         }
     }
 
-    /**
-     * Descarga un objeto de S3 como array de bytes
-     */
     public byte[] downloadAsBytes(String bucket, String key) {
-
         try {
             log.info("Descargando objeto: {} del bucket: {}", key, bucket);
-
             GetObjectRequest getObjectRequest = GetObjectRequest.builder().bucket(bucket).key(key).build();
-
             ResponseBytes<GetObjectResponse> responseBytes = s3Client.getObjectAsBytes(getObjectRequest);
-
             log.info("Objeto descargado exitosamente: {}", key);
-
             return responseBytes.asByteArray();
-
         } catch (NoSuchBucketException e) {
             throw new S3BucketNotFoundException(bucket, e);
         } catch (NoSuchKeyException e) {
@@ -96,34 +78,25 @@ public class AwsS3Service {
         }
     }
 
-    /**
-     * Sube un archivo a S3
-     */
     public void upload(String bucket, String key, MultipartFile file) {
-
-        // Validaciones del archivo
         if (file == null || file.isEmpty()) {
             throw new InvalidFileException("El archivo está vacío o es nulo");
         }
-
         if (file.getOriginalFilename() == null || file.getOriginalFilename().isBlank()) {
             throw new InvalidFileException("El nombre del archivo no es válido");
         }
-
         if (file.getSize() == 0) {
             throw new InvalidFileException("El archivo no puede tener tamaño 0");
         }
 
         try {
             log.info("Subiendo archivo: {} al bucket: {}, tamaño: {} bytes", key, bucket, file.getSize());
-
             PutObjectRequest putObjectRequest = PutObjectRequest.builder().bucket(bucket).key(key)
                     .contentType(file.getContentType()).contentLength(file.getSize()).build();
-
             s3Client.putObject(putObjectRequest, RequestBody.fromInputStream(file.getInputStream(), file.getSize()));
-
             log.info("Archivo subido exitosamente: {}", key);
-
+            // NOTA: Si subes un archivo con la misma 'key' (ruta/nombre), S3 lo sobrescribe automaticamente.
+            // Eso cumple con el requisito de modificar sin cambiar la ubicacion.
         } catch (NoSuchBucketException e) {
             throw new S3BucketNotFoundException(bucket, e);
         } catch (S3Exception e) {
@@ -136,25 +109,15 @@ public class AwsS3Service {
         }
     }
 
-    /**
-     * Mueve un objeto dentro del mismo bucket (copiar + borrar)
-     */
     public void moveObject(String bucket, String sourceKey, String destKey) {
-
         try {
             log.info("Moviendo objeto de {} a {} en el bucket: {}", sourceKey, destKey, bucket);
-
             CopyObjectRequest copyRequest = CopyObjectRequest.builder().sourceBucket(bucket).sourceKey(sourceKey)
                     .destinationBucket(bucket).destinationKey(destKey).build();
-
             s3Client.copyObject(copyRequest);
-
             log.info("Objeto copiado exitosamente, procediendo a eliminar el origen");
-
             deleteObject(bucket, sourceKey);
-
             log.info("Objeto movido exitosamente de {} a {}", sourceKey, destKey);
-
         } catch (NoSuchBucketException e) {
             throw new S3BucketNotFoundException(bucket, e);
         } catch (NoSuchKeyException e) {
@@ -167,20 +130,19 @@ public class AwsS3Service {
         }
     }
 
-    /**
-     * Elimina un objeto de S3
-     */
     public void deleteObject(String bucket, String key) {
-
         try {
+            log.info("Verificando si el objeto existe antes de eliminar: {}", key);
+            // FIX PROFESOR: Validamos que exista primero usando headObject
+            s3Client.headObject(HeadObjectRequest.builder().bucket(bucket).key(key).build());
+
             log.info("Eliminando objeto: {} del bucket: {}", key, bucket);
-
             DeleteObjectRequest deleteRequest = DeleteObjectRequest.builder().bucket(bucket).key(key).build();
-
             s3Client.deleteObject(deleteRequest);
-
             log.info("Objeto eliminado exitosamente: {}", key);
-
+        } catch (NoSuchKeyException e) {
+            log.error("El objeto {} no existe, no se puede eliminar.", key);
+            throw new S3ObjectNotFoundException(key, bucket, e);
         } catch (NoSuchBucketException e) {
             throw new S3BucketNotFoundException(bucket, e);
         } catch (S3Exception e) {
