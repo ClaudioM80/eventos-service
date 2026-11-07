@@ -80,7 +80,7 @@ public class EventoController {
                 .orElseThrow(() -> new RuntimeException("Compra no encontrada con ID: " + idCompra));
 
         // 2. Armamos el documento con los datos REALES (incluyendo cantidad y precio unitario)
-        String contenido = "=== RESUMEN DE COMPRA V2 ===\n" +
+        String contenido = "=== RESUMEN DE COMPRA V3 DEFINITIVO ===\n" +
                            "ID Compra: " + compra.getId() + "\n" +
                            "Evento: " + compra.getEvento().getNombre() + "\n" +
                            "Cantidad de entradas: " + compra.getCantidad() + "\n" +
@@ -93,8 +93,8 @@ public class EventoController {
         // 3. Guardamos temporalmente en EFS (Requisito de la evaluación)
         try {
             Path efsPath = Paths.get("/app/efs", "resumen_" + idCompra + ".txt");
-            Files.createDirectories(efsPath.getParent()); // Crea la carpeta si no existe
-            Files.write(efsPath, data); // Guarda el archivo en EFS
+            Files.createDirectories(efsPath.getParent());
+            Files.write(efsPath, data);
             System.out.println("Archivo guardado exitosamente en EFS: " + efsPath.toString());
         } catch (IOException e) {
             System.err.println("Error guardando en EFS (Si estás en local, ignora esto): " + e.getMessage());

@@ -23,19 +23,5 @@ jobs:
         with:
           context: .
           push: true
-          tags: ${{ secrets.DOCKERHUB_USERNAME }}/eventos-service:latest
-
-      - name: Deploy to EC2
-        run: |
-          echo "${{ secrets.EC2_SSH_KEY }}" > private_key.pem
-          chmod 600 private_key.pem
-          ssh -o StrictHostKeyChecking=no -i private_key.pem ${{ secrets.USER_SERVER }}@${{ secrets.EC2_HOST }} << 'EOF'
-            echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
-            docker pull ${{ secrets.DOCKERHUB_USERNAME }}/eventos-service:latest
-            docker stop eventos-service || true
-            docker rm eventos-service || true
-            
-            # AQUÍ ESTÁ LA MAGIA DEL EFS (Requisito del profe):
-            # Montamos la carpeta /mnt/efs de la EC2 en el /app/efs del contenedor
-            docker run -d --name eventos-service -v /mnt/efs:/app/efs -p 8080:8080 ${{ secrets.DOCKERHUB_USERNAME }}/eventos-service:latest
-          EOF
+          # CAMBIAMOS A V3 PARA FORZAR LA ACTUALIZACIÓN
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/eventos-service:v3
