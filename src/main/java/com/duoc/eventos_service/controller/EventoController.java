@@ -78,13 +78,13 @@ public class EventoController {
         Compra compra = compraRepository.findById(idCompra)
                 .orElseThrow(() -> new RuntimeException("Compra no encontrada con ID: " + idCompra));
 
-        String contenido = "=== RESUMEN DE COMPRA EXITOSO ===\n" +
-                           "ID Compra: " + compra.getId() + "\n" +
-                           "Evento: " + compra.getEvento().getNombre() + "\n" +
-                           "Cantidad de entradas: " + compra.getCantidad() + "\n" +
-                           "Precio unitario: $" + compra.getPrecioUnitario() + "\n" +
-                           "Total pagado: $" + compra.getPrecioTotal() + "\n" +
-                           "¡Gracias por tu compra!";
+        String contenido = "=== RESUMEN DE COMPRA V5 ===\n" +
+                   "ID Compra: " + compra.getId() + "\n" +
+                   "Evento: " + compra.getEvento().getNombre() + "\n" +
+                   "Cantidad de entradas: " + compra.getCantidad() + "\n" +
+                   "Precio unitario: $" + compra.getPrecioUnitario() + "\n" +
+                   "Total pagado: $" + compra.getPrecioTotal() + "\n" +
+                   "¡Gracias por tu compra!";
                            
         byte[] data = contenido.getBytes(java.nio.charset.StandardCharsets.UTF_8);
 
