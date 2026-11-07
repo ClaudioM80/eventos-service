@@ -34,5 +34,8 @@ jobs:
             docker pull ${{ secrets.DOCKERHUB_USERNAME }}/eventos-service:latest
             docker stop eventos-service || true
             docker rm eventos-service || true
-            docker run -d --name eventos-service -p 8080:8080 ${{ secrets.DOCKERHUB_USERNAME }}/eventos-service:latest
+            
+            # AQUÍ ESTÁ LA MAGIA DEL EFS (Requisito del profe):
+            # Montamos la carpeta /mnt/efs de la EC2 en el /app/efs del contenedor
+            docker run -d --name eventos-service -v /mnt/efs:/app/efs -p 8080:8080 ${{ secrets.DOCKERHUB_USERNAME }}/eventos-service:latest
           EOF
