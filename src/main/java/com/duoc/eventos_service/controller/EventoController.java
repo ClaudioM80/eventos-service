@@ -75,12 +75,10 @@ public class EventoController {
 
     @GetMapping("/resumen/descargar/{idCompra}")
     public ResponseEntity<ByteArrayResource> descargarResumen(@PathVariable Long idCompra) {
-        // 1. Buscamos la compra REAL en la base de datos
         Compra compra = compraRepository.findById(idCompra)
                 .orElseThrow(() -> new RuntimeException("Compra no encontrada con ID: " + idCompra));
 
-        // 2. Armamos el documento con los datos REALES (incluyendo cantidad y precio unitario)
-        String contenido = "=== RESUMEN DE COMPRA V3 DEFINITIVO ===\n" +
+        String contenido = "=== RESUMEN DE COMPRA EXITOSO ===\n" +
                            "ID Compra: " + compra.getId() + "\n" +
                            "Evento: " + compra.getEvento().getNombre() + "\n" +
                            "Cantidad de entradas: " + compra.getCantidad() + "\n" +
@@ -90,17 +88,14 @@ public class EventoController {
                            
         byte[] data = contenido.getBytes(java.nio.charset.StandardCharsets.UTF_8);
 
-        // 3. Guardamos temporalmente en EFS (Requisito de la evaluación)
         try {
             Path efsPath = Paths.get("/app/efs", "resumen_" + idCompra + ".txt");
             Files.createDirectories(efsPath.getParent());
             Files.write(efsPath, data);
-            System.out.println("Archivo guardado exitosamente en EFS: " + efsPath.toString());
         } catch (IOException e) {
-            System.err.println("Error guardando en EFS (Si estás en local, ignora esto): " + e.getMessage());
+            System.err.println("Error guardando en EFS: " + e.getMessage());
         }
 
-        // 4. Preparamos la descarga
         ByteArrayResource resource = new ByteArrayResource(data);
 
         return ResponseEntity.ok()
