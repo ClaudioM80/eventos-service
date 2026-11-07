@@ -80,7 +80,7 @@ public class EventoController {
                 .orElseThrow(() -> new RuntimeException("Compra no encontrada con ID: " + idCompra));
 
         // 2. Armamos el documento con los datos REALES (incluyendo cantidad y precio unitario)
-        String contenido = "=== RESUMEN DE COMPRA ===\n" +
+        String contenido = "=== RESUMEN DE COMPRA V2 ===\n" +
                            "ID Compra: " + compra.getId() + "\n" +
                            "Evento: " + compra.getEvento().getNombre() + "\n" +
                            "Cantidad de entradas: " + compra.getCantidad() + "\n" +
