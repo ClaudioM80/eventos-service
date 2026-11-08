@@ -70,11 +70,17 @@
 			<artifactId>spring-cloud-aws-starter-s3</artifactId>
 		</dependency>
 
-		<!-- Dependencias de Test -->
+		<!-- NUEVO: Dependencia para generar PDFs -->
+		<dependency>
+			<groupId>com.github.librepdf</groupId>
+			<artifactId>openpdf</artifactId>
+			<version>1.3.39</version>
+		</dependency>
+
+		<!-- Dependencias de Test (Quitamos el scope test para usar MockMultipartFile) -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-test</artifactId>
-			<scope>test</scope>
 		</dependency>
 	</dependencies>
 

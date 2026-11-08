@@ -4,14 +4,20 @@ import com.duoc.eventos_service.model.Compra;
 import com.duoc.eventos_service.model.Evento;
 import com.duoc.eventos_service.repository.CompraRepository;
 import com.duoc.eventos_service.repository.EventoRepository;
+import com.duoc.eventos_service.service.AwsS3Service;
+import com.lowagie.text.Document;
+import com.lowagie.text.Paragraph;
+import com.lowagie.text.pdf.PdfWriter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
-import java.io.IOException;
+import java.io.ByteArrayOutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -26,6 +32,11 @@ public class EventoController {
 
     @Autowired
     private CompraRepository compraRepository;
+
+    @Autowired
+    private AwsS3Service awsS3Service; // Inyectamos el servicio de S3
+
+    private final String BUCKET_NAME = "eventos-cm-2026"; // Tu bucket de S3
 
     @GetMapping("/eventos")
     public List<Evento> listarEventos() {
@@ -78,29 +89,42 @@ public class EventoController {
         Compra compra = compraRepository.findById(idCompra)
                 .orElseThrow(() -> new RuntimeException("Compra no encontrada con ID: " + idCompra));
 
-        String contenido = "=== RESUMEN DE COMPRA V5 ===\n" +
-                   "ID Compra: " + compra.getId() + "\n" +
-                   "Evento: " + compra.getEvento().getNombre() + "\n" +
-                   "Cantidad de entradas: " + compra.getCantidad() + "\n" +
-                   "Precio unitario: $" + compra.getPrecioUnitario() + "\n" +
-                   "Total pagado: $" + compra.getPrecioTotal() + "\n" +
-                   "¡Gracias por tu compra!";
-                           
-        byte[] data = contenido.getBytes(java.nio.charset.StandardCharsets.UTF_8);
-
         try {
-            Path efsPath = Paths.get("/app/efs", "resumen_" + idCompra + ".txt");
-            Files.createDirectories(efsPath.getParent());
-            Files.write(efsPath, data);
-        } catch (IOException e) {
-            System.err.println("Error guardando en EFS: " + e.getMessage());
+            // 1. GENERAR EL PDF EN MEMORIA
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            Document document = new Document();
+            PdfWriter.getInstance(document, baos);
+            document.open();
+            document.add(new Paragraph("=== TICKET DE COMPRA ==="));
+            document.add(new Paragraph("ID Compra: " + compra.getId()));
+            document.add(new Paragraph("Evento: " + compra.getEvento().getNombre()));
+            document.add(new Paragraph("Cantidad de entradas: " + compra.getCantidad()));
+            document.add(new Paragraph("Precio unitario: $" + compra.getPrecioUnitario()));
+            document.add(new Paragraph("Total pagado: $" + compra.getPrecioTotal()));
+            document.add(new Paragraph("¡Gracias por tu compra!"));
+            document.close();
+            byte[] pdfBytes = baos.toByteArray();
+
+            // 2. GUARDAR TEMPORALMENTE EN EFS
+            String fileName = "ticket_" + idCompra + ".pdf";
+            Path efsPath = Paths.get("/app/efs", fileName);
+            Files.createDirectories(efsPath.getParent()); 
+            Files.write(efsPath, pdfBytes); 
+
+            // 3. SUBIR A AWS S3 (Estructura: evento1/usuario1/ticket_1.pdf)
+            String s3Key = "evento" + compra.getEvento().getId() + "/usuario1/" + fileName;
+            MultipartFile multipartFile = new MockMultipartFile(fileName, fileName, "application/pdf", pdfBytes);
+            awsS3Service.upload(BUCKET_NAME, s3Key, multipartFile);
+
+            // 4. RETORNAR EL PDF PARA DESCARGA
+            ByteArrayResource resource = new ByteArrayResource(pdfBytes);
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + fileName)
+                    .contentType(MediaType.APPLICATION_PDF)
+                    .body(resource);
+
+        } catch (Exception e) {
+            throw new RuntimeException("Error generando y subiendo el PDF: " + e.getMessage(), e);
         }
-
-        ByteArrayResource resource = new ByteArrayResource(data);
-
-        return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=resumen_" + idCompra + ".txt")
-                .contentType(MediaType.APPLICATION_OCTET_STREAM)
-                .body(resource);
     }
 }
