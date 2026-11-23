@@ -18,6 +18,14 @@ jobs:
           java-version: '21'
           distribution: 'temurin'
 
+      # 🔥 PASO NUEVO: Crear el application.properties con el Issuer de Azure
+      - name: Create application.properties
+        run: |
+          mkdir -p src/main/resources
+          cat <<EOF > src/main/resources/application.properties
+          spring.security.oauth2.resourceserver.jwt.issuer-uri=${{ secrets.AZURE_ISSUER_URI }}
+          EOF
+
       - name: Build and Test with Maven
         run: mvn clean test || true
 
